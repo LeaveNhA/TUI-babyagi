@@ -1,7 +1,8 @@
 (ns babyagi.subs
   "Re-frame app db subscriptions. Essentially maps a keyword describing a
   result to a function that retrieves the current value from the app db."
-  (:require [re-frame.core :as rf]))
+  (:require [re-frame.core :as rf]
+            [babyagi.domain.tasks :as tasks]))
 
 (rf/reg-sub
   :db
@@ -20,18 +21,37 @@
 
 (rf/reg-sub
  :babyagi.application/task-list
- (fn [db _]
+ tasks/db->task-list)
+
+(rf/reg-sub
+ :babyagi.application/completed-task-list
+ tasks/db->completed-task-list)
+
+(rf/reg-sub
+ :babyagi.application/logs
+ (fn [db]
    (-> db
        :babyagi.application/data
-       ((juxt (comp :time :in-time)
-              (comp :times :in-time)))
-       ((fn [[time-idx times]]
-          (get times time-idx)))
-       :task-list)))
+       :logs
+       (apply str))))
+
+(rf/reg-sub
+ :babyagi.application/stats
+ (fn [db]
+   (let [baby (-> db
+                  :babyagi.application/data)
+         [embedding-stats
+          gpt-stats] (map #(-> baby :openai % :stats)
+                          [:embedding :gpt])
+         pinecone-stats (-> baby :pinecone :stats)]
+     (str "OpenAI:\n[GPT            :" gpt-stats
+          "]\n[Embedding (Ada):" embedding-stats "]" "\n"
+          "Pinecone: " pinecone-stats))))
 
 (rf/reg-sub
  :babyagi.application/objective
  (fn [db _]
    (-> db
        :babyagi.application/data
+       :in-time
        :objective)))

@@ -4,28 +4,30 @@
    [clojure.string :refer [join]]
    [re-frame.core :as rf]
    [reagent.core :as r]
+   [react-blessed-contrib :as rbc]
    [babyagi.views :refer [router vertical-menu]]))
 
 (defn panel []
   [:box#panel
-   {:top 0
-    :left 0
-    :width "50%"
-    :height "20%"
-    :style {:border {:fg :magenta}}
+   {:style {:border {:fg :magenta}}
     :border {:type :line}
     :label " Panel "}
    [:box
     {:top 1
      :left 1
      :right 1}
-    [vertical-menu {:options [{:id "task-list-show" :label "Show Task-List"
+    [vertical-menu {:options [#_{:id "task-list-show"
+                               :label "Show Task-List"
                                :action #(rf/dispatch [:babyagi.application/prompt!
                                                       [:default
                                                        "WHO?:"
                                                        print]])}
-                              {:id "let-the-baby-play" :label "Continue to Play" :action #()}
-                              {:id "baby-stop" :label "Pause the Baby" :action #()}]
+                              {:id "let-the-baby-play"
+                               :label "Continue to Play"
+                               :action #(rf/dispatch [:babyagi.application/play! true])}
+                              {:id "baby-stop"
+                               :label "Pause the Baby"
+                               :action #(rf/dispatch [:babyagi.application/stop])}]
                     :bg :magenta
                     :fg :black
                     :on-select #(rf/dispatch [:babyagi.application/call-panel-option %])}]]])
@@ -37,121 +39,78 @@
        {:top 0
         :right 0
         :width "50%"
-        :height "20%"
         :style {:border {:fg :magenta}}
         :border {:type :line}
         :label " Objective "}
        [:box
         {:top 1
          :left 1
-         :right 1}
-        [:box
-         {:top 1
-          :left 1
-          :right 1
-          :align :left
-          :content @objective}]]])))
+         :right 1
+         :align :left
+         :content @objective}]])))
 
-(defn stats []
-  [:box#stats {:bottom 0
-               :left 0
-               :width "50%"
-               :height "80%"
-               :style {:border {:fg :magenta}}
-               :border {:type :line}
-               :label " Stats "}
-   [:box {:top 1
-          :left 1
-          :right 1}
-    [:box "STATS......."]]])
+(defn completed-task-list []
+  (fn []
+    (let [completed-task-list (rf/subscribe [:babyagi.application/completed-task-list])]
+      [:box#stats {:style {:border {:fg :magenta}}
+                   :border {:type :line}
+                   :label " Completed "}
+       [:box {:top 1
+              :left 1
+              :right 1
+              :bottom 1}
+        (for [[id {:keys [description result]}] (map-indexed vector @completed-task-list)]
+          [:text {:key id :top id}
+           (str "[" (if result "✓" "X") "]"
+                " "
+                description)])]])))
 
 (defn task-list []
   (fn []
     (let [task-list (rf/subscribe [:babyagi.application/task-list])]
-      [:box#task-list {:bottom 0
-                       :right 0
-                       :width "50%"
-                       :height "80%"
-                       :style {:border {:fg :magenta}}
+      [:box#task-list {:style {:border {:fg :magenta}}
                        :border {:type :line}
                        :label " Task-List "}
        [:box {:top 1
               :left 1
-              :right 1}
-        [:box
-         (for [{:keys [id name]} @task-list]
-           ^{:key id} [:text name])]]])))
+              :right 1
+              :bottom 1}
+        (for [[id {:keys [description result]}] (map-indexed vector @task-list)]
+          [:text {:key id :top id}
+           (str "[" (if result "✓" "X") "]"
+                " "
+            description)])]])))
+
+(defn logs-and-stats []
+  (fn []
+    (let [stats (rf/subscribe [:babyagi.application/stats])
+          logs (atom "") #_(rf/subscribe [:babyagi.application/logs])]
+      [:box#goal
+       {:top 0
+        :right 0
+        :style {:border {:fg :magenta}}
+        :border {:type :line}
+        :label " Logs & Stats "}
+       [:> rbc/Grid {:rows 2 :cols 1}
+        [:box {:row 0 :col 0 :align :left
+               :content @stats}]
+        [:box {:row 1 :col 0 :align :left
+               :content @logs}]]])))
 
 (defn home
   "Display welcome message and general usage info to user.
   Returns hiccup :box element."
   [_]
-  [:box#app {:width  "100%"
-             :height "100%"}
-   [panel]
-   [objective]
-   [stats]
-   [task-list]])
-
-(defn about
-  "Display link to the template project and share features.
-  Returns hiccup :box vector."
-  [_]
-  [:box#about
-   {:top 0
-    :right 0
-    :width "70%"
-    :height "50%"
-    :style {:border {:fg :blue}}
-    :border {:type :line}
-    :label " About "}
-   [:box#content
-    {:top 1
-     :left 1
-     :right 1
-     :bottom 1}
-    [:text {:content "Demo ClojureScript Terminal-User-Interface (TUI) app generated from the leiningen cljs-tui template."}]
-    [:box {:top 3
-           :align :center
-           :style {:fg :green}
-           :content "https://github.com/eccentric-j/cljs-tui-template"}]
-    [:text {:top 5
-            :align :center
-            :content  (join "\n  - "
-                            ["Features:\n"
-                             "Use ClojureScript and functional programming\n    to deliver rich CLIs quickly"
-                             "Manage your state and side-effects with re-frame"
-                             "Compose simple view functions into a rich UI\n    with Reagent React views"
-                             "Use web technologies you are already familiar with"
-                             "Faster start up time with node"
-                             "Supports shadow, figwheel-main, or lein-figwheel"])}]]])
-
-(defn resources
-  "Share links to libraries this project is built with.
-  Returns hiccup :box vector."
-  [_]
-  [:box#about
-   {:top 0
-    :right 0
-    :width "70%"
-    :height "50%"
-    :style {:border {:fg :red}}
-    :border {:type :line}
-    :label " Resources "}
-   [:box#content
-    {:top 1
-     :left 1
-     :right 1
-     :bottom 1}
-    [:text (join "\n  - "
-                 ["Learn more about the technology behind this powerful ClojureScript template:\n"
-                  "https://clojurescript.org/"
-                  "https://github.com/chjj/blessed"
-                  "https://github.com/Yomguithereal/react-blessed"
-                  "https://reagent-project.github.io/"
-                  "https://shadow-cljs.org/"
-                  "https://figwheel.org/"
-                  "https://github.com/bhauman/lein-figwheel"])]]])
+  [:> rbc/Grid {:width "100%" :height "100%"
+                :rows 4 :cols 2}
+   [:box {:row 0 :col 0 :row-span 1 :col-span 2 :label "Babyagi | /w proper language"}
+    [panel]
+    [objective]]
+   [:box {:row 1 :col 0 :row-span 1 :col-span 2}
+    [task-list]]
+   [:box {:row 2 :col 0 :row-span 2 :col-span 2}
+    [logs-and-stats]
+    #_[completed-task-list]]])
 
 (defn credits
   "Give respect and credit to the Denis for inspiring for this project.
@@ -256,4 +215,4 @@
                     ;;:credits credits
                     }
             :view view}]
-   child])
+   #_child])

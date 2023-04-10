@@ -13,6 +13,7 @@
 
 ;; Setup mount to work in ClojureScript
 (mount/in-cljc-mode)
+(enable-console-print!)
 
 (defstate screen
   "Blessed screen stores state like terminal size and provides methods for

@@ -26,12 +26,14 @@
     "test": "npx shadow-cljs compile test"
   },
   "dependencies": {
+    "@pinecone-database/pinecone": "^0.0.12",
     "blessed": "^0.1.81",
     "create-react-class": "^15.6.3",
     "openai": "^3.2.1",
-    "react": "^16.7.0",
-    "react-blessed": "^0.5.0",
-    "react-dom": "^16.7.0"
+    "react": "^16.8.0",
+    "react-blessed": "^0.6.2",
+    "react-blessed-contrib": "^0.2.1",
+    "react-dom": "^16.8.0"
   },
   "devDependencies": {
     "loose-envify": "^1.4.0",

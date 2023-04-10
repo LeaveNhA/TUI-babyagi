@@ -83,7 +83,7 @@
   (r/with-let [selected (r/atom 0)]
     (with-keys @screen {["j" "down"] #(swap! selected (comp (fn [i] (mod i (count options))) inc))
                         ["k" "up"] #(swap! selected (comp (fn [i] (mod i (count options))) dec))
-                        ["l" "enter"] #(on-select ((:action (get options @selected))))}
+                        ["l" "enter"] #((:action (get options @selected)))}
       (let [current @selected]
         [:box#menu
          (merge

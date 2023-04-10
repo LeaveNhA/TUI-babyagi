@@ -6,7 +6,8 @@
                 [reagent "0.8.1" :exclusions [[cljsjs/react]
                                               [cljsjs/react-dom]
                                               [cljsjs/create-react-class]]]
-                [re-frame "0.10.6"]]
+                [re-frame "0.10.6"]
+                [day8.re-frame/undo "0.3.3"]]
  :builds {:app {:output-to  "target/main.js"
                 :output-dir "target/js/compiled/prod"
                 :target     :node-script
@@ -15,7 +16,7 @@
                              :output-to        "target/js/compiled/babyagi.js"
                              :output-dir       "target/js/compiled/dev"}
                 :release    {:main             babyagi.main/main!
-                             :compiler-options {:optimizations :simple}}}
+                             :compiler-options {:optimizations :none}}}
           :test {:output-to "target/test.js"
                  :output-dir "target/js/compiled/test"
                  :target :node-test
