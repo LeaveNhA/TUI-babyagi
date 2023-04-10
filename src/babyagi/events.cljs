@@ -4,6 +4,7 @@
             ["@pinecone-database/pinecone" :as pc]
             [cljs.pprint :as pp]
             [clojure.edn]
+            [clojure.set :refer [rename-keys]]
             [clojure.string]
             [blessed :as bls]
             [babyagi.domain.tasks :as tasks]))
@@ -21,11 +22,13 @@
                                   :client-status :uninitialized
                                   :client nil ;; will populate after initialization!
                                   :embedding {:model "text-embedding-ada-002"
-                                              :stats {:request 0
-                                                      :response 0}}
+                                              :usage {:prompt-tokens 0
+                                                      :completion-tokens 0
+                                                      :total-tokens 0}}
                                   :gpt {:model "text-davinci-003"
-                                        :stats {:request 0
-                                                :response 0}}}
+                                        :usage {:prompt-tokens 0
+                                                :completion-tokens 0
+                                                :total-tokens 0}}}
                                  :pinecone
                                  {:api-key "4545dff6-4096-44ab-8cea-e9d10546d081"
                                   :environment "asia-southeast1-gcp"
@@ -472,17 +475,24 @@
                                (-> db
                                    :babyagi.application/data
                                    :should-play?))]
+     (println "Should play:" baby-should-play?)
      (if baby-should-play?
        {:db db
-        :fx [[:dispatch [:babyagi.application/call-execution-agent!]]]}
+        :fx [[:dispatch [:babyagi.application/log "Started to play!"]]
+             [:dispatch [:babyagi.application/call-execution-agent!]]]}
        {:db db}))))
 
 (rf/reg-event-db
  :babyagi.application/stop
  (fn [db]
-   (assoc-in db [:babyagi.application/data
-                 :should-play?]
-             false)))
+   (-> db
+       (update-in [:babyagi.application/data
+                   :logs]
+                  conj
+                  "Stopped!")
+       (assoc-in [:babyagi.application/data
+                  :should-play?]
+                 false))))
 
 (rf/reg-event-fx
  :babyagi.application/update-task-order
@@ -531,6 +541,38 @@
                          :client]
                         openai-client))})))
 
+(rf/reg-event-db
+ :babyagi.application/log
+ (fn [db [_ log-text]]
+   (update-in db [:babyagi.application/data
+                  :logs]
+              conj
+              log-text)))
+
+(rf/reg-event-db
+ :babyagi.application/add-to-usage
+ (fn [db [_ usage-data]]
+   (if (map? usage-data)
+     (let [old-usage-data (-> db
+                              :babyagi.application/data
+                              :openai
+                              :gpt
+                              :usage)
+           new-usage-data (rename-keys usage-data
+                                       {:prompt_tokens :prompt-tokens
+                                        :completion_tokens :completion-tokens
+                                        :total_tokens :total-tokens})
+           summed-usage-data (merge-with +
+                                         old-usage-data
+                                         new-usage-data)
+           new-db (assoc-in db [:babyagi.application/data
+                                :openai
+                                :gpt
+                                :usage]
+                            summed-usage-data)]
+       new-db)
+     db)))
+
 (rf/reg-fx
  :babyagi.application/call-openai-fx!
  (fn [[openai-client resolve-fn error-fn prompt model temperature max-tokens]]
@@ -551,7 +593,10 @@
      #_(pp/pprint "@ :babyagi.application/call-openai-fx! request-promise: " request-promise)
      (->
       request-promise
-      (.then #(resolve-fn (js->clj % :keywordize-keys true)))
+      (.then #(js->clj % :keywordize-keys true))
+      (.then #(do (rf/dispatch [:babyagi.application/add-to-usage (-> % :data :usage)])
+                  %))
+      (.then resolve-fn)
       (.catch #(error-fn %))))))
 
 (rf/reg-event-fx

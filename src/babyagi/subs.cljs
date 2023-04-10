@@ -41,7 +41,7 @@
    (let [baby (-> db
                   :babyagi.application/data)
          [embedding-stats
-          gpt-stats] (map #(-> baby :openai % :stats)
+          gpt-stats] (map #(-> baby :openai % :usage)
                           [:embedding :gpt])
          pinecone-stats (-> baby :pinecone :stats)]
      (str "OpenAI:\n[GPT            :" gpt-stats
