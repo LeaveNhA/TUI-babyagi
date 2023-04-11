@@ -13,12 +13,14 @@
      {:style {:border {:fg :magenta}}
       :border {:type :line}
       :label " Panel "}
-     [vertical-menu {:options [#_{:id "task-list-show"
-                                  :label "Show Task-List"
-                                  :action #(rf/dispatch [:babyagi.application/prompt!
-                                                         [:default
-                                                          "WHO?:"
-                                                          print]])}
+     [vertical-menu {:options [{:id "set-objective-for-baby"
+                                :clickable? true
+                                :label "Set Objective"
+                                :action #(rf/dispatch [:babyagi.application/prompt!
+                                                       [:default
+                                                        "New Objective:"
+                                                        (fn [objective]
+                                                          (rf/dispatch [:babyagi.application/set-new-objective objective]))]])}
                                {:id "let-the-baby-play"
                                 :label "Start to Play!"
                                 :clickable? @can-play?
@@ -221,7 +223,6 @@
               :height "100%"}
    [router {:views {:loader loader
                     :home home
-                    ;;:credits credits
                     }
             :view view}]
    #_child])

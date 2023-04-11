@@ -803,8 +803,7 @@
  :babyagi.application/prompt-fx!
  (fn [[db [prompt-data-or-keyword prompt-text prompt-callback-fn-or-keyword]]]
    (let [screen (-> db :screen deref)
-         prompt-map (or (when ((complement keyword?)
-                               prompt-data-or-keyword)
+         prompt-map (or (when ((complement keyword?) prompt-data-or-keyword)
                           prompt-data-or-keyword)
                         (-> db
                             :babyagi.application/prompt-styles
@@ -830,3 +829,11 @@
  (fn [{:keys [db]} [_ prompt-data]]
    {:babyagi.application/prompt-fx! [db prompt-data]
     :db db}))
+
+(rf/reg-event-db
+ :babyagi.application/set-new-objective
+ (fn [db [_ new-objective]]
+   (assoc-in db [:babyagi.application/data
+                  :in-time
+                  :objective]
+             new-objective)))
