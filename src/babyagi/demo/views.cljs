@@ -8,29 +8,31 @@
    [babyagi.views :refer [router vertical-menu]]))
 
 (defn panel []
-  [:box#panel
-   {:style {:border {:fg :magenta}}
-    :border {:type :line}
-    :label " Panel "}
-   [:box
-    {:top 1
-     :left 1
-     :right 1}
-    [vertical-menu {:options [#_{:id "task-list-show"
-                               :label "Show Task-List"
-                               :action #(rf/dispatch [:babyagi.application/prompt!
-                                                      [:default
-                                                       "WHO?:"
-                                                       print]])}
-                              {:id "let-the-baby-play"
-                               :label "Continue to Play"
-                               :action #(rf/dispatch [:babyagi.application/play! true])}
-                              {:id "baby-stop"
-                               :label "Pause the Baby"
-                               :action #(rf/dispatch [:babyagi.application/stop])}]
-                    :bg :magenta
-                    :fg :black
-                    :on-select #(rf/dispatch [:babyagi.application/call-panel-option %])}]]])
+  (let [can-play? (rf/subscribe [:babyagi.application/can-play?])]
+    (fn []
+      [:box#panel
+       {:style {:border {:fg :magenta}}
+        :border {:type :line}
+        :label " Panel "}
+       [vertical-menu {:options [#_{:id "task-list-show"
+                                    :label "Show Task-List"
+                                    :action #(rf/dispatch [:babyagi.application/prompt!
+                                                           [:default
+                                                            "WHO?:"
+                                                            print]])}
+                                 {:id "let-the-baby-play"
+                                  :label "Start to Play!"
+                                  :clickable? @can-play?
+                                  :action #(rf/dispatch [:babyagi.application/play! true])}
+                                 {:id "baby-stop"
+                                  :label "Stop the Baby!"
+                                  :clickable? true
+                                  :action #(rf/dispatch [:babyagi.application/stop])}]
+                       :bg :magenta
+                       :fg :black
+                       :disabled-bg :gray
+                       :disabled-fg :white
+                       :on-select identity}]])))
 
 (defn objective []
   (fn []
@@ -71,20 +73,22 @@
       [:box#task-list {:style {:border {:fg :magenta}}
                        :border {:type :line}
                        :label " Task-List "}
-       [:box {:top 1
-              :left 1
-              :right 1
-              :bottom 1}
-        (for [[id {:keys [description result]}] (map-indexed vector @task-list)]
-          [:text {:key id :top id}
-           (str "[" (if result "✓" "X") "]"
-                " "
-            description)])]])))
+       (for [[id {:keys [description result]}] (map-indexed vector @task-list)]
+         [:box {:key id :top id}
+          (str "[" (if result "✓" "X") "]"
+               " "
+               description)])])))
+
+(defn log-type->log-text-color [log-type]
+  (get {:information  "cyan"
+        :warning      "yellow"
+        :error        "red"}
+       log-type "white"))
 
 (defn logs-and-stats []
   (fn []
     (let [stats (rf/subscribe [:babyagi.application/stats])
-          logs (atom "") #_(rf/subscribe [:babyagi.application/logs])]
+          logs  (rf/subscribe [:babyagi.application/logs])]
       [:box#goal
        {:top 0
         :right 0
@@ -94,8 +98,12 @@
        [:> rbc/Grid {:rows 2 :cols 1}
         [:box {:row 0 :col 0 :align :left
                :content @stats}]
-        [:box {:row 1 :col 0 :align :left
-               :content @logs}]]])))
+        [:> rbc/Log {:row 1 :col 0}
+         (for [[idx {:keys [log-type log-text]}] (map-indexed vector @logs)]
+           [:box {:key idx
+                  :top idx
+                  :style {:fg (log-type->log-text-color log-type)}
+                  :content log-text}])]]])))
 
 (defn home
   "Display welcome message and general usage info to user.

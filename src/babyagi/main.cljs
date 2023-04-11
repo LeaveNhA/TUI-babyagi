@@ -46,7 +46,6 @@
   [view & {:keys [opts]}]
   (mount/start)
   (rf/dispatch-sync [:init (:options opts) (size @screen) screen])
-  #_(rf/dispatch [:babyagi.application/add-new-tasks [{:description "Develop task list"}]])
   (rf/dispatch [:babyagi.application/initialize-openai-client!])
   (rf/dispatch [:babyagi.application/initialize-pinecone-client!])
   (-> (r/reactify-component view)

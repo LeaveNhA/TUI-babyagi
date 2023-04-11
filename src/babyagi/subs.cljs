@@ -21,7 +21,7 @@
 
 (rf/reg-sub
  :babyagi.application/task-list
- tasks/db->task-list)
+ (partial tasks/db->task-list 4))
 
 (rf/reg-sub
  :babyagi.application/completed-task-list
@@ -33,7 +33,8 @@
    (-> db
        :babyagi.application/data
        :logs
-       (apply str))))
+       ((partial take-last 4))
+       vec)))
 
 (rf/reg-sub
  :babyagi.application/stats
@@ -47,6 +48,20 @@
      (str "OpenAI:\n[GPT            :" gpt-stats
           "]\n[Embedding (Ada):" embedding-stats "]" "\n"
           "Pinecone: " pinecone-stats))))
+
+(rf/reg-sub
+ :babyagi.application/can-play?
+ (fn [db]
+   (let [baby (:babyagi.application/data db)
+         [openai pinecone] (-> baby
+                               ((juxt
+                                 (comp :client-status :openai)
+                                 (comp :client-status :pinecone))))]
+     (every? (partial = :ready-to-operate)
+             [openai pinecone]))))
+
+(comment
+  (rf/subscribe [:babyagi.application/can-play?]))
 
 (rf/reg-sub
  :babyagi.application/objective
