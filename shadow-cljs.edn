@@ -17,7 +17,7 @@
                              :output-to        "target/js/compiled/babyagi.js"
                              :output-dir       "target/js/compiled/dev"}
                 :release    {:main             babyagi.main/main!
-                             :compiler-options {:optimizations :none}}}
+                             :compiler-options {:optimizations :simple}}}
           :brw {:output-to  "target/main.js"
                 :output-dir "target/js/compiled/prod"
                 :target     :browser
