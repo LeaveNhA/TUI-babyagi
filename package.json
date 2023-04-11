@@ -1,7 +1,7 @@
 {
   "name": "babyagi",
   "version": "0.1.0",
-  "description": "FIXME",
+    "description": "BabyAGI in Clojurescript, like every AI study should be in.",
   "main": "target/main.js",
   "author": "FIXME <FIXME@FIXME.com>",
   "license": "Apache-2.0",

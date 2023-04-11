@@ -92,6 +92,7 @@
       [:box#goal
        {:top 0
         :right 0
+        :left 0
         :style {:border {:fg :magenta}}
         :border {:type :line}
         :label " Logs & Stats "}
