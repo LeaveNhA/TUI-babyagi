@@ -56,7 +56,7 @@
         (nth (if (< prev-idx 0) (dec total) prev-idx))
         (key))))
 
-#_(defn vertical-menu
+(defn vertical-menu
   "Display an interactive vertical-menu component.
 
   Takes a hash-map of props:
@@ -84,79 +84,27 @@
            disabled-bg
            box default on-select options]}]
   (r/with-let [selected (r/atom 0)]
-    (fn []
-      (with-keys @screen {["j" "down"] #(swap! selected (comp (fn [i] (mod i (count options))) inc))
-                          ["k" "up"] #(swap! selected (comp (fn [i] (mod i (count options))) dec))
-                          ["l" "enter"] #(let [selected-options (get options @selected)
-                                               selected-fn (:action selected-options)
-                                               selected-clickable? (:clickable? selected-options)]
-                                           (re-frame.core/dispatch [:babyagi.application/log
-                                                                    :information
-                                                                    (str "Selected: "
-                                                                         selected-fn
-                                                                         selected-clickable?)])
-                                           (if selected-clickable?
-                                             (selected-fn %)
-                                             (identity %)))}
-        (let [current @selected]
-          [:box#menu
-           (merge
-            {:top 1
-             :left 1
-             :right 1
-             :bottom 1}
-            box)
-           (for [[idx option] (map-indexed vector options)]
-             (let [{:keys [id label action clickable?]} option
-                   is-selected? (= current idx)]
-               [:box {:key id
-                      :top idx
-                      :style {:bg (if clickable?
-                                    (when is-selected? (or bg :green))
-                                    (or disabled-bg :gray))
-                              :fg (if clickable?
-                                    (when is-selected? (or fg :white))
-                                    (or disabled-fg :black))}
-                      :height 1
-                      :content (str (when clickable? "+") label)}]))])))))
-
-(defn vertical-menu
-  "Display an interactive vertical-menu component.
-  ...
-  "
-  [{:keys [bg fg
-           disabled-fg
-           disabled-bg
-           box default on-select options]}]
-  (r/with-let [selected (r/atom 0)]
-    (fn []
-      (with-keys @screen {["j" "down"] #(swap! selected (comp (fn [i] (mod i (count options))) inc))
-                          ["k" "up"] #(swap! selected (comp (fn [i] (mod i (count options))) dec))
-                          ["l" "enter"] #(let [selected-options (get options @selected)]
-                                           (re-frame.core/dispatch [:babyagi.application/log
-                                                                    :information
-                                                                    (str "Selected: "
-                                                                         selected-options)])
-                                           (when (:clickable? selected-options)
-                                             (on-select (:action selected-options))))}
-        (let [current @selected]
-          [:box#menu
-           (merge
-            {:top 1
-             :left 1
-             :right 1
-             :bottom 1}
-            box)
-           (for [[idx option] (map-indexed vector options)]
-             (let [{:keys [id label action clickable?]} option
-                   is-selected? (= current idx)]
-               [:box {:key id
-                      :top idx
-                      :style {:bg (if clickable?
-                                    (when is-selected? (or bg :green))
-                                    (or disabled-bg :gray))
-                              :fg (if clickable?
-                                    (when is-selected? (or fg :white))
-                                    (or disabled-fg :black))}
-                      :height 1
-                      :content (str (when clickable? "+") label)}]))])))))
+    (with-keys @screen {["j" "down"] #(swap! selected (comp (fn [i] (mod i (count options))) inc))
+                        ["k" "up"] #(swap! selected (comp (fn [i] (mod i (count options))) dec))
+                        ["l" "enter"] #((:action (get options @selected)))}
+      (let [current @selected]
+        [:box#menu
+         (merge
+          {:top 1
+           :left 1
+           :right 1
+           :bottom 1}
+          box)
+         (for [[idx option] (map-indexed vector options)]
+           (let [{:keys [id label action clickable?]} option
+                 is-selected? (= current idx)]
+             [:box {:key id
+                    :top idx
+                    :style {:bg (if clickable?
+                                  (when is-selected? (or bg :green))
+                                  (or disabled-bg :gray))
+                            :fg (if clickable?
+                                  (when is-selected? (or fg :white))
+                                  (or disabled-fg :black))}
+                    :height 1
+                    :content label}]))]))))

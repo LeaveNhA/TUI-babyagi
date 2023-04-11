@@ -9,30 +9,30 @@
 
 (defn panel []
   (let [can-play? (rf/subscribe [:babyagi.application/can-play?])]
-    (fn []
-      [:box#panel
-       {:style {:border {:fg :magenta}}
-        :border {:type :line}
-        :label " Panel "}
-       [vertical-menu {:options [#_{:id "task-list-show"
-                                    :label "Show Task-List"
-                                    :action #(rf/dispatch [:babyagi.application/prompt!
-                                                           [:default
-                                                            "WHO?:"
-                                                            print]])}
-                                 {:id "let-the-baby-play"
-                                  :label "Start to Play!"
-                                  :clickable? @can-play?
-                                  :action #(rf/dispatch [:babyagi.application/play! true])}
-                                 {:id "baby-stop"
-                                  :label "Stop the Baby!"
-                                  :clickable? true
-                                  :action #(rf/dispatch [:babyagi.application/stop])}]
-                       :bg :magenta
-                       :fg :black
-                       :disabled-bg :gray
-                       :disabled-fg :white
-                       :on-select identity}]])))
+    [:box#panel
+     {:style {:border {:fg :magenta}}
+      :border {:type :line}
+      :label " Panel "}
+     [vertical-menu {:options [#_{:id "task-list-show"
+                                  :label "Show Task-List"
+                                  :action #(rf/dispatch [:babyagi.application/prompt!
+                                                         [:default
+                                                          "WHO?:"
+                                                          print]])}
+                               {:id "let-the-baby-play"
+                                :label "Start to Play!"
+                                :clickable? @can-play?
+                                :action #(when @can-play?
+                                           (rf/dispatch [:babyagi.application/play! true]))}
+                               {:id "baby-stop"
+                                :label "Stop the Baby!"
+                                :clickable? true
+                                :action #(rf/dispatch [:babyagi.application/stop])}]
+                     :bg :magenta
+                     :fg :black
+                     :disabled-bg :gray
+                     :disabled-fg :white
+                     :on-select #(rf/dispatch [:babyagi.application/call-panel-option %])}]]))
 
 (defn objective []
   (fn []

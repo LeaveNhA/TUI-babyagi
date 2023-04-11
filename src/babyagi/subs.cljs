@@ -47,7 +47,7 @@
          pinecone-stats (-> baby :pinecone :stats)]
      (str "OpenAI:\n[GPT            :" gpt-stats
           "]\n[Embedding (Ada):" embedding-stats "]" "\n"
-          "Pinecone: " pinecone-stats))))
+          "Pinecone        :" pinecone-stats))))
 
 (rf/reg-sub
  :babyagi.application/can-play?

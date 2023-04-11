@@ -19,11 +19,11 @@
  :init
  (fn [db [_ opts terminal-size screen]]
    (let [first-task-identity (random-uuid)]
-     {:babyagi.application/data {:in-time {:objective "Teach me how to make money with programming, guide me! Provide runnable codes with every task solution."
+     {:babyagi.application/data {:in-time {:objective "Make money only creating text-based clojurescript course content with Bloom's Taxonomy."
                                            :context-data nil ;; will depend on the context
                                            :task-order [first-task-identity]
                                            :tasks {first-task-identity {:id first-task-identity
-                                                                        :description "Provide actionable task list for me to do"}}}
+                                                                        :description "Create task list"}}}
                                  :openai
                                  {:api-key ""
                                   :client-status :uninitialized
@@ -65,24 +65,9 @@
       :router/view :home
       :terminal/size terminal-size})))
 
-(defonce d (atom {}))
-(comment
-  (-> (rf/subscribe [:db])
-      deref
-      :babyagi.application/data
-      :openai
-      :client
-      (.listEngines)
-      (.then #(rf/dispatch [:babyagi.application/log :information
-                            (-> % (js->clj :keywordize-keys true)
-                                :data
-                                str)]))))
-
 (rf/reg-event-fx
  :babyagi.application/save-result-to-pinecone!
  (fn [{:keys [db]} [_ task-id result]]
-   (rf/dispatch [:babyagi.application/log :information (str "Saving result to Pinecone index:"
-                                                            task-id)])
    (let [result-id task-id
          task (-> db
                   :babyagi.application/data
@@ -116,22 +101,44 @@
 (rf/reg-fx
  :babyagi.application/upsert-result-to-pinecone-fx!
  (fn [[openai-client model index result-id task-name result]]
-   (rf/dispatch [:babyagi.application/log :information (str "Upserting result into Pinecone with:"
-                                                            [openai-client model index result-id task-name result])])
    (let [embedding-promise (.createEmbedding openai-client
                                              (clj->js {:model model
                                                        :input (clojure.string/replace (str result) #"\n" "")}))]
      (-> embedding-promise
          (.then #(js->clj % :keywordize-keys true))
-         (.then (fn [embeddings]
-                    (let [embedding-vector (:embedding (first (:data embeddings)))]
-                      (.upsert index [result-id embedding-vector {:task task-name :result result}])
-                      embeddings)))
-         (.then #(rf/dispatch [:babyagi.application/log :information (str "The result has saved into the Pinecone:"
+         (.then #(get-in % [:data :data 0 :embedding] {:not-found-in-path true
+                                                       :response-data %}))
+         (.then (wrap-identity!
+                 #(rf/dispatch [:babyagi.application/log
+                                :information
+                                (str "Embedding returned: "
+                                     %)])))
+         (.then (partial safe-upsert! index result-id result))
+         (.then #(rf/dispatch [:babyagi.application/log :information (str "The result got from the promise: "
                                                                           %)]))
-         (.then #(rf/dispatch [:babyagi.application/call-task-creation-agent!]))
          (.catch #(rf/dispatch [:babyagi.application/log :error (str "Error on saving into to Pinecone: "
                                                                      %)]))))))
+
+(defn safe-upsert!
+  [index result-id result embedding-vector]
+  (if (fn? index.upsert)
+    (let [upsert-data (clj->js
+                       {:upsertRequest
+                        {:namespace "babyagi"
+                         :vectors
+                         [{:id (str result-id)
+                           :values embedding-vector}]}})
+          add-to-stats (rf/dispatch [:babyagi.application/add-to-req|resp :request])]
+      (-> (index.upsert upsert-data)
+          (.then #(js->clj % :keywordize-keys true))
+          (.then #(rf/dispatch [:babyagi.application/add-to-req|resp :response]))
+          (.then #(rf/dispatch [:babyagi.application/log :information "Calling Task Creation agent."]))
+          (.then #(rf/dispatch [:babyagi.application/call-task-creation-agent!]))
+          (.catch (wrap-identity!
+                   #(rf/dispatch [:babyagi.application/log
+                                  :error
+                                  (str "Error on upserting embeddings: " %)])))))
+    :no-index!))
 
 (rf/reg-event-db
  :babyagi.application/change-pinecone-client-status
@@ -144,8 +151,7 @@
 (rf/reg-event-fx
  :babyagi.application/create-pinecone-index!
  (fn [{:keys [db]}]
-   (let [;; db @(rf/subscribe [:db])
-         {:keys [client
+   (let [{:keys [client
                  table-name]} (-> db
                                   :babyagi.application/data
                                   :pinecone)
@@ -395,8 +401,7 @@
 (rf/reg-event-fx
  :babyagi.application/call-execution-agent!
  (fn [{:keys [db]} _]
-   (let [;;db @(rf/subscribe [:db])
-         openai-client (-> db
+   (let [openai-client (-> db
                            :babyagi.application/data
                            :openai
                            :client)
@@ -457,8 +462,7 @@
 (rf/reg-event-fx
  :babyagi.application/call-task-creation-agent!
  (fn [{:keys [db]} _]
-   (let [;; db @(rf/subscribe [:db])
-         objective (-> db
+   (let [objective (-> db
                        :babyagi.application/data
                        :in-time
                        :objective)
@@ -505,11 +509,9 @@
      {:babyagi.application/call-openai-fx! [openai-client
                                             (comp
                                              #(rf/dispatch [:babyagi.application/add-new-tasks %])
-                                             #(do (swap! d assoc :new-tasks %)
-                                                  %)
                                              clojure.edn/read-string
                                              #(get-in % [:data :choices 0 :text]))
-                                            js/console.error
+                                            #(rf/dispatch [:babyagi.application/log :error %])
                                             prompt
                                             model
                                             temperature
@@ -558,8 +560,7 @@
 (rf/reg-event-fx
  :babyagi.application/call-prioritization-agent!
  (fn [{:keys [db]} _]
-   (let [;;db @(rf/subscribe [:db])
-         objective (-> db
+   (let [objective (-> db
                        :babyagi.application/data
                        :in-time
                        :objective)
@@ -591,7 +592,16 @@
                                              (wrap-identity! #(rf/dispatch [:babyagi.application/log :information (str %)]))
                                              clojure.edn/read-string
                                              #(get-in % [:data :choices 0 :text]))
-                                            #(rf/dispatch [:babyagi.application/log :error "Prioritization agent: failed!"])
+                                            #(rf/dispatch [:babyagi.application/log
+                                                           :error
+                                                           (str
+                                                            "Prioritization agent: failed with:"
+                                                            %
+                                                            " /w "
+                                                            [prompt
+                                                             model
+                                                             temperature
+                                                             max-tokens])])
                                             prompt
                                             model
                                             temperature
@@ -681,11 +691,13 @@
                         openai-client))
       :fx [[:dispatch [:babyagi.application/log :information "OpenAI initialized."]]]})))
 
+(defn log-to-file [[file-name log-data]]
+  (spit file-name (str log-data "\n")
+        :append true))
+
 (rf/reg-fx
  :babyagi.application/log-to-file
- (fn [[file-name log-data]]
-   (spit file-name (str log-data "\n")
-         :append true)))
+ log-to-file)
 
 (rf/reg-event-fx
  :babyagi.application/log
@@ -699,6 +711,29 @@
                      log-data)
       :babyagi.application/log-to-file [log-file-name
                                         (str log-data)]})))
+
+(rf/reg-event-fx
+ :babyagi.application/add-to-req|resp
+ (fn [{:keys [db]} [_ type-of-interaction]]
+   {:db (let [old-usage-data (-> db
+                                 :babyagi.application/data
+                                 :pinecone
+                                 :stats)
+              new-usage-data (condp = type-of-interaction
+                               :request {:request 1}
+                               :response {:response 1}
+                               {})
+              summed-usage-data (merge-with +
+                                            old-usage-data
+                                            new-usage-data)
+              new-db (assoc-in db [:babyagi.application/data
+                                   :pinecone
+                                   :stats]
+                               summed-usage-data)]
+          new-db)
+    :fx [[:dispatch [:babyagi.application/log :information (str
+                                                            "Usage added: "
+                                                            model)]]]}))
 
 (rf/reg-event-fx
  :babyagi.application/add-to-usage
@@ -730,11 +765,6 @@
 (rf/reg-fx
  :babyagi.application/call-openai-fx!
  (fn [[openai-client resolve-fn error-fn prompt model temperature max-tokens]]
-   (rf/dispatch [:babyagi.application/log
-                 :information
-                 (str
-                  "@ :babyagi.application/call-openai-fx! "
-                  (clj->js [openai-client resolve-fn error-fn prompt model temperature max-tokens]))])
    (let [request-promise (.createCompletion
                           openai-client
                           (clj->js
