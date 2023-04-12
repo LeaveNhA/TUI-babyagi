@@ -70,8 +70,10 @@
                 " "
                 description)])]])))
 
-(comment
-  (rf/subscribe [:babyagi.application/task-list 3]))
+(defn limit-string [s limit]
+  (if (< (count s) limit)
+    s
+    (str (subs s 0 limit) "...")))
 
 (defn task-list []
   (let [box-ref-r (r/atom nil)]
@@ -87,17 +89,20 @@
                                               (-> @box-ref-r
                                                   ._getHeight)])))
                              [nil nil])
-            max-task-list-item (or (- height 2) 1)
+            max-task-list-item (or (- height 2 4) 1)
+            max-character-in-one-line (or (- width 2) 1)
             task-list (rf/subscribe [:babyagi.application/task-list max-task-list-item])]
         [:box#task-list {:ref #(reset! box-ref-r %)
                          :style {:border {:fg :magenta}}
                          :border {:type :line}
                          :label (str " Task-List ")} ;
          (for [[idx {:keys [id description result]}] (map-indexed vector @task-list)]
-           [:box {:key id :top idx}
-            (str "[" (if result "✓" "X") "]"
+           [:box {:key (or id (random-uuid)) :top idx}
+            (str
+             (if id "[" "{") (if result "✓" "X") (if id "]" "}")
                  " "
-                 description)])]))))
+                 (limit-string (clojure.string/replace description #"\n" "")
+                               max-character-in-one-line))])]))))
 
 (defn log-type->log-text-color [log-type]
   (get {:information  "cyan"

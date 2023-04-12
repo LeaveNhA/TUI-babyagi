@@ -127,7 +127,8 @@
                         {:namespace "babyagi"
                          :vectors
                          [{:id (str result-id)
-                           :values embedding-vector}]}})
+                           :values embedding-vector
+                           :metadata (clj->js (update result :id str))}]}})
           add-to-stats (rf/dispatch [:babyagi.application/add-to-req|resp :request])]
       (-> (index.upsert upsert-data)
           (.then #(js->clj % :keywordize-keys true))
@@ -495,8 +496,8 @@
                      (-> incomplete-tasks
                          ((partial map :description))
                          ((partial interpose ", "))
-                         ((partial apply str)))
-                     ". Based on the result, create new tasks to be completed by the AI system that do not overlap with incomplete tasks. Response in EDN format with the tasks as an array based on structure of: {:description}, do not comment.")
+                         #_((partial apply str)))
+                     ". Based on the result, create new tasks to be completed by the AI system that do not overlap with incomplete tasks. Response in EDN format with the tasks as an array based on structure of: [\"task 1\" \"task 2\"], do not comment.")
          model (-> db
                    :babyagi.application/data
                    :openai
@@ -521,12 +522,9 @@
       :fx [[:dispatch [:babyagi.application/log :information "Task agent called!"]]]
       :db db})))
 
-(comment
-  (rf/dispatch [:babyagi.application/call-task-creation-agent!]))
-
 (rf/reg-event-fx
  :babyagi.application/add-new-tasks
- (fn [{:keys [db]} [_ new-tasks]]
+ (fn [{:keys [db]} [_ new-tasks']]
    (let [tasks (-> db
                    :babyagi.application/data
                    :in-time
@@ -537,8 +535,9 @@
                         :task-order)
          new-tasks-identified (map (fn [task]
                                      (let [id (random-uuid)]
-                                       {id (assoc task :id id)}))
-                                   new-tasks)
+                                       {id {:id id
+                                            :description task}}))
+                                   new-tasks')
          new-tasks (apply merge
                           tasks new-tasks-identified)
          new-task-order (reduce conj
@@ -553,11 +552,11 @@
                          :in-time
                          :tasks]
                         new-tasks))
-      :fx [[:dispatch [:babyagi.application/log :information "Task agent: New tasks added."]]
+      :fx [[:dispatch [:babyagi.application/log :information (str "Task agent: New tasks added:"
+                                                                  new-tasks'
+                                                                  " -> "
+                                                                  new-tasks)]]
            [:dispatch [:babyagi.application/call-prioritization-agent!]]]})))
-
-(comment
-  (rf/dispatch [:babyagi.application/add-new-tasks [{:description "Develop task list"}]]))
 
 (rf/reg-event-fx
  :babyagi.application/call-prioritization-agent!
@@ -570,12 +569,15 @@
                        :babyagi.application/data
                        :in-time
                        :tasks
-                       ((partial filter #(not (:result %)))))
+                       ((partial filter (complement :result)))
+                       ((partial map second))
+                       ((partial map #(select-keys % [:id :description])))
+                       ((partial filter :id)))
          prompt (str "You are an task prioritization AI tasked with cleaning the formatting of and reprioritizing the following tasks: "
                      task-list
                      ". Consider the ultimate objective of your team: "
                      objective
-                     ". Do not remove any tasks. Return the result as ordered vector of IDs in EDN format, like:\n"
+                     ". Do not remove any tasks. Return the result as ordered vector of IDs in EDN format, example:\n"
                      "[#uuid \"2d94bd2c-66b4-46b0-8742-7cf3e461ffc7\" #uuid \"b93c629a-6b6f-4846-988e-9c03ed94a3d4\"]")
          model (-> db
                    :babyagi.application/data
@@ -591,7 +593,9 @@
      {:babyagi.application/call-openai-fx! [openai-client
                                             (comp
                                              #(rf/dispatch [:babyagi.application/update-task-order %])
-                                             (wrap-identity! #(rf/dispatch [:babyagi.application/log :information (str %)]))
+                                             (wrap-identity! #(rf/dispatch [:babyagi.application/log :information (str
+                                                                                                                   "Prioritization agent returned: "
+                                                                                                                   %)]))
                                              clojure.edn/read-string
                                              #(get-in % [:data :choices 0 :text]))
                                             #(rf/dispatch [:babyagi.application/log
@@ -649,8 +653,9 @@
                         :task-order]
                     new-task-order)
       :fx [[:dispatch [:babyagi.application/log :information "Prioritization agent: updated task order."]]
-           [:dispatch [:babyagi.application/log :information "Finished a cycle!"
-                       (when auto-cycle? "Running for another one.")]]
+           [:dispatch [:babyagi.application/log :information
+                       (str "Finished a cycle!"
+                            (when auto-cycle? "Running for another one."))]]
            [:dispatch [:babyagi.application/play!]]]})))
 
 (rf/reg-event-db

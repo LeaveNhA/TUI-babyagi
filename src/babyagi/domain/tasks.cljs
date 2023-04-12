@@ -7,8 +7,9 @@
         task-order (if (= max-item :inf)
                      (:task-order in-time)
                      (take max-item (:task-order in-time)))
+        clean-task-order (filter identity task-order)
         tasks (:tasks in-time)
-        task-list (map tasks task-order)]
+        task-list (map tasks clean-task-order)]
     task-list))
 
 (defn db->completed-task-list [db]
