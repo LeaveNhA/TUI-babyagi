@@ -47,7 +47,9 @@
   (mount/start)
   (rf/dispatch-sync [:init (:options opts) (size @screen) screen])
   (rf/dispatch [:babyagi.application/initialize-openai-client! (.-OPENAI_API_KEY js/process.env)])
-  (rf/dispatch [:babyagi.application/initialize-pinecone-client! (.-PINECONE_API_KEY js/process.env)])
+  (rf/dispatch [:babyagi.application/initialize-pinecone-client!
+                (.-PINECONE_ENVIRONMENT js/process.env)
+                (.-PINECONE_API_KEY js/process.env)])
   (-> (r/reactify-component view)
       (r/create-element #js {})
       (render @screen)))

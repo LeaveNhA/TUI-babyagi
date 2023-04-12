@@ -38,7 +38,7 @@
                                                 :total-tokens 0}}}
                                  :pinecone
                                  {:api-key ""
-                                  :environment "asia-southeast1-gcp"
+                                  :environment ""
                                   :client-status :uninitialized ;
                                   :client nil ;; will populate after initialization!
                                   :index nil  ;; will populate after initialization!
@@ -235,16 +235,17 @@
 
 (rf/reg-event-fx
  :babyagi.application/initialize-pinecone-client!
- (fn [{:keys [db]} [_ pinecone-api-key']]
+ (fn [{:keys [db]} [_ pinecone-environment' pinecone-api-key']]
    (let [pinecone-api-key (or pinecone-api-key'
                               (-> db
                                   :babyagi.application/data
                                   :pinecone
                                   :api-key))
-         pinecone-environment (-> db
-                                  :babyagi.application/data
-                                  :pinecone
-                                  :environment)
+         pinecone-environment (or pinecone-environment'
+                                  (-> db
+                                      :babyagi.application/data
+                                      :pinecone
+                                      :environment))
          pinecone-client      (new pc/PineconeClient)
          pinecone-init!       (.init pinecone-client
                                      (clj->js {:apiKey pinecone-api-key
