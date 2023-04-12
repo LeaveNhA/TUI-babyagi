@@ -21,7 +21,13 @@ Do not forget that the application needs OpenAI and Pinecone API keys. You shoul
 
 ### Key Bindings
 
-It only has one Screen for now. The main screen is a general view for the application. You can simply extend the Task List view by pressing `"` key and toggle it by pressing the same key again.
+It only has one Screen for now. The main screen is a general view for the application. 
+
+You can simply extend the Task List view by pressing `"` key and toggle it by pressing the same key again.
+
+Arrow keys or vim style navigation with `j,k` to navigate panel option. And `Enter` to select it.
+
+To quit, `q` or `Escape` button is assigned.
 
 ## Roadmap
 
