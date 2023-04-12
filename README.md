@@ -15,6 +15,10 @@ BabyAGI is a powerful task management system implemented in ClojureScript, a mod
 
 Detailed instructions on how to set up and use BabyAGI will be provided here in the future. Stay tuned for updates!
 
+You can simply clone the project and run `npm run build`. It generates the final output (program) as a single JS file in lib folder. You can run it by `node lib/main.js`.
+
+Do not forget that the application needs OpenAI and Pinecone API keys. You should get them by their services' websites and inject them by: `PINECONE_API_KEY="KEY" OPENAI_API_KEY="KEY" node lib/main.js`.
+
 ## Roadmap
 
 - Improve information collection and processing capabilities.
