@@ -35,7 +35,7 @@
                      :fg :black
                      :disabled-bg :gray
                      :disabled-fg :white
-                     :on-select #(rf/dispatch [:babyagi.application/call-panel-option %])}]]))
+                     :on-select identity}]]))
 
 (defn objective []
   (fn []
