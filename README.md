@@ -19,6 +19,10 @@ You can simply clone the project and run `npm install` and `npm run build`. It g
 
 Do not forget that the application needs OpenAI and Pinecone API keys. You should get them by their services' websites and inject them by: `PINECONE_ENVIRONMENT="" PINECONE_API_KEY="KEY" OPENAI_API_KEY="KEY" node lib/main.js`.
 
+### Key Bindings
+
+It only has one Screen for now. The main screen is a general view for the application. You can simply extend the Task List view by pressing `"` key and toggle it by pressing the same key again.
+
 ## Roadmap
 
 - Improve information collection and processing capabilities.
