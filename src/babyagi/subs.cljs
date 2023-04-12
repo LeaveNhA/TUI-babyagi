@@ -20,8 +20,14 @@
     (:terminal/size db)))
 
 (rf/reg-sub
+ :screen
+ (fn [db _]
+   (deref (:screen db))))
+
+(rf/reg-sub
  :babyagi.application/task-list
- (partial tasks/db->task-list 4))
+ (fn [db [_ max-item]]
+   (tasks/db->task-list max-item db)))
 
 (rf/reg-sub
  :babyagi.application/completed-task-list

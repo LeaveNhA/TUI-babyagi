@@ -2,6 +2,7 @@
   (:require
    [clojure.pprint :refer [pprint]]
    [clojure.string :refer [join]]
+   [babyagi.keys :refer [with-keys]]
    [re-frame.core :as rf]
    [reagent.core :as r]
    [react-blessed-contrib :as rbc]
@@ -69,17 +70,34 @@
                 " "
                 description)])]])))
 
+(comment
+  (rf/subscribe [:babyagi.application/task-list 3]))
+
 (defn task-list []
-  (fn []
-    (let [task-list (rf/subscribe [:babyagi.application/task-list])]
-      [:box#task-list {:style {:border {:fg :magenta}}
-                       :border {:type :line}
-                       :label " Task-List "}
-       (for [[id {:keys [description result]}] (map-indexed vector @task-list)]
-         [:box {:key id :top id}
-          (str "[" (if result "✓" "X") "]"
-               " "
-               description)])])))
+  (let [box-ref-r (r/atom nil)]
+    (fn []
+      (let [[width height] (if (and @box-ref-r
+                                    (and (-> @box-ref-r
+                                             ._getWidth)
+                                         (-> @box-ref-r
+                                             ._getHeight)))
+                             (-> @box-ref-r
+                                 (#(identity [(-> @box-ref-r
+                                                  ._getWidth)
+                                              (-> @box-ref-r
+                                                  ._getHeight)])))
+                             [nil nil])
+            max-task-list-item (or (- height 2) 1)
+            task-list (rf/subscribe [:babyagi.application/task-list max-task-list-item])]
+        [:box#task-list {:ref #(reset! box-ref-r %)
+                         :style {:border {:fg :magenta}}
+                         :border {:type :line}
+                         :label (str " Task-List ")} ;
+         (for [[idx {:keys [id description result]}] (map-indexed vector @task-list)]
+           [:box {:key id :top idx}
+            (str "[" (if result "✓" "X") "]"
+                 " "
+                 description)])]))))
 
 (defn log-type->log-text-color [log-type]
   (get {:information  "cyan"
@@ -112,16 +130,26 @@
   "Display welcome message and general usage info to user.
   Returns hiccup :box element."
   [_]
-  [:> rbc/Grid {:width "100%" :height "100%"
-                :rows 4 :cols 2}
-   [:box {:row 0 :col 0 :row-span 1 :col-span 2 :label "Babyagi | /w proper language"}
-    [panel]
-    [objective]]
-   [:box {:row 1 :col 0 :row-span 1 :col-span 2}
-    [task-list]]
-   [:box {:row 2 :col 0 :row-span 2 :col-span 2}
-    [logs-and-stats]
-    #_[completed-task-list]]])
+  (r/with-let [stats&logs-status (r/atom true)
+               screen (rf/subscribe [:screen])]
+    (with-keys @screen {["\""] #(swap! stats&logs-status not)}
+      (if @stats&logs-status
+        [:> rbc/Grid {:width "100%" :height "100%"
+                      :rows 4 :cols 2}
+         [:box {:row 0 :col 0 :row-span 1 :col-span 2 :label "Babyagi | /w proper language"}
+          [panel]
+          [objective]]
+         [:box {:row 1 :col 0 :row-span 1 :col-span 2}
+          [task-list]]
+         [:box {:row 2 :col 0 :row-span 2 :col-span 2}
+          [logs-and-stats]]]
+        [:> rbc/Grid {:width "100%" :height "100%"
+                      :rows 4 :cols 2}
+         [:box {:row 0 :col 0 :row-span 1 :col-span 2 :label "Babyagi | /w proper language"}
+          [panel]
+          [objective]]
+         [:box {:row 1 :col 0 :row-span 3 :col-span 2}
+          [task-list]]]))))
 
 (defn credits
   "Give respect and credit to the Denis for inspiring for this project.
