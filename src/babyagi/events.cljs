@@ -235,11 +235,12 @@
 
 (rf/reg-event-fx
  :babyagi.application/initialize-pinecone-client!
- (fn [{:keys [db]}]
-   (let [pinecone-api-key (-> db
-                              :babyagi.application/data
-                              :pinecone
-                              :api-key)
+ (fn [{:keys [db]} [_ pinecone-api-key']]
+   (let [pinecone-api-key (or pinecone-api-key'
+                              (-> db
+                                  :babyagi.application/data
+                                  :pinecone
+                                  :api-key))
          pinecone-environment (-> db
                                   :babyagi.application/data
                                   :pinecone
@@ -671,11 +672,12 @@
 
 (rf/reg-event-fx
  :babyagi.application/initialize-openai-client!
- (fn [{:keys [db]}]
-   (let [openai-api-key (-> db
-                            :babyagi.application/data
-                            :openai
-                            :api-key)
+ (fn [{:keys [db]} [_ openai-api-key']]
+   (let [openai-api-key (or openai-api-key'
+                            (-> db
+                                :babyagi.application/data
+                                :openai
+                                :api-key))
          openai-client (-> {:apiKey openai-api-key
                             :organization "org-cxnjPgvT4TN97Gy0MpA8shUH"} clj->js
                            (#(new oa/Configuration %))
