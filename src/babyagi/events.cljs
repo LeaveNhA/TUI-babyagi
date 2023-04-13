@@ -19,7 +19,7 @@
  :init
  (fn [db [_ opts terminal-size screen]]
    (let [first-task-identity (random-uuid)]
-     {:babyagi.application/data {:in-time {:objective "Make money only creating text-based clojurescript course content with Bloom's Taxonomy."
+     {:babyagi.application/data {:in-time {:objective "Make LISP great again!"
                                            :context-data nil ;; will depend on the context
                                            :task-order [first-task-identity]
                                            :tasks {first-task-identity {:id first-task-identity
