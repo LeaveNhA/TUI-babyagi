@@ -89,8 +89,8 @@
                                               (-> @box-ref-r
                                                   ._getHeight)])))
                              [nil nil])
-            max-task-list-item (or (- height 2 4) 1)
-            max-character-in-one-line (or (- width 2) 1)
+            max-task-list-item (or (- height 2) 1)
+            max-character-in-one-line (or (- width 2 4) 1)
             task-list (rf/subscribe [:babyagi.application/task-list max-task-list-item])]
         [:box#task-list {:ref #(reset! box-ref-r %)
                          :style {:border {:fg :magenta}}
